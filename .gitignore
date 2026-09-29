@@ -1,0 +1,21 @@
+# Local workspace instructions and operating-system metadata
+AGENTS.md
+.DS_Store
+._*
+
+# MATLAB editor backups and generated build caches
+*.asv
+*.m~
+*.slxc
+slprj/
+sccprj/
+codegen/
+*_ert_rtw/
+*_grt_rtw/
+
+# Local verification and alternative modelling work
+tests/
+validation/*
+!validation/data/
+Simulink Simscape/
++collector/solve_reference.m
