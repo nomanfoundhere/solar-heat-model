@@ -77,20 +77,6 @@ The [Intex temperature measurements](validation/data/intex_2024-07-03_temperatur
 
 These measurements describe the Intex reference system on 3 July 2024. The files in `results/` are simulated results for the branching collector.
 
-## Final test replay (13 October 2026)
-
-[`validation/data/final_test_2026-10-13.txt`](validation/data/final_test_2026-10-13.txt) is the course recording of the built collector: inlet, outlet and vessel temperature (°C) and flow (L/min) at 1 Hz for 43.6 minutes, read at the cart sensors. The lamp was on from the first sample. All 2 L of water started in the vessel, with the collector and hoses empty. The joints at the printed tees leaked heavily, the first refill was pumped until the vessel ran dry, and later refills were topped up during the run. Steam from the leaked water fogged the covers.
-
-The design model predicts a dry, sealed collector at a steady 1 L/min, which the test was not. The replay runs the same equations with the conditions of the test instead. The measured inlet temperature and flow drive the collector, through the hose between each sensor and the collector (about 118 mL and 0.68 W/K per side). The modelled outlet is compared with the outlet sensor. The vessel is not modelled, because the loop leaked. Three test conditions are added, and none is fitted:
-
-- **Leak flow.** The first refill pumped 4.52 L until the vessel ran dry. The loop was empty at the start, and the air drawn in by the starving pump emptied it again at the end, so all 2 L was lost at the joints. That leaves 1 − 2.00/4.52 = 0.56 of the metered flow crossing the plate. The same share is assumed for the whole test.
-- **Cart glass.** The test cart's glass cover above the lid has an energy transmittance of 0.87, the AGC datasheet value for 4 mm reduced-iron float glass (Planibel Clearlite). The thickness is unknown; ordinary to low-iron float spans 0.83–0.90.
-- **Fogged covers.** Three surfaces in the light path carried condensed droplets: the underside and top of the polycarbonate lid, and the underside of the cart glass. The room side of the glass stayed dry. Zhu et al. (2017) give the transmittance of a window with droplets on its back as a function of the droplet contact angle and coverage (their Fig. 7a). Uncoated polycarbonate has a contact angle of about 74° (Karabulut et al. 2025), which gives 0.77 of the dry value at 60 % droplet coverage. Unclean glass, at about 51° (Briscoe and Galvin, reviewed by Zhu et al.), gives 0.92 at the same coverage. Clean glass, on which water spreads flat, loses only 1–9 % (Pollet et al. 1999). The beaded droplets seen on the cart glass after the test point to the unclean case.
-
-The light reaching the plate is then 0.87 × 0.77² × 0.92 = 0.48 of the design value. With these conditions, the model reproduces the measured outlet within 2.3 K RMS and ends 0.8 K above it. At 90 % droplet coverage (polycarbonate 0.66, glass 0.88), it ends about 5 K below it. From minute 19 onwards, the measured outlet lies between the two. With the design inputs, the model misses by 13.9 K. Leakage at the printed tees and the fogging it caused explain the test result. The design prediction for a dry, sealed collector was not tested.
-
-The replay script is kept with the local verification work, like the Intex fit.
-
 ## Change the block diagram
 
 The block diagram is generated from [simulink/build_collector_model.m](simulink/build_collector_model.m). Edit that file when changing the model structure, then rebuild:

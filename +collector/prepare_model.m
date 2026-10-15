@@ -266,7 +266,11 @@ aperture_length = d.aperture_length_mm/1000;  % m, opening inside the rim.
 aperture_width = d.aperture_width_mm/1000;  % m.
 gap = d.gap_mm/1000;  % m, plate-to-cover distance.
 g.diffuse_view_factor = collector.cover_view_factor(aperture_length, aperture_width, gap);
-if h.rim_shading
+if isfield(d, 'casing') && ~isempty(d.casing)
+    % Test casing around the collector (Kappa reference test): its walls screen and reflect the
+    % lamp light; the share reaching the window follows from a ray trace of the casing.
+    g.optical_access = collector.casing_light_share(d.casing, aperture_length, aperture_width, t.diffuse_fraction);
+elseif h.rim_shading
     beam_fraction = 1 - t.diffuse_fraction;  % Normal-incidence beam is assumed to clear the rim.
     diffuse_access = t.diffuse_fraction*g.diffuse_view_factor;
     g.optical_access = beam_fraction + diffuse_access;  % Fraction of incident light clearing the rim.
