@@ -1,6 +1,6 @@
 # Leaf model results
 
-Model `simulink/solar_collector.slx` (Simulink ode15s (solar_collector.slx)), inputs `collector_inputs.m`, run 2026-10-15 15:13. Test: 1000 W/m², 1 L/min, 30 min, room 20 °C.
+Model `simulink/solar_collector.slx` (Simulink ode15s (solar_collector.slx)), inputs `collector_inputs.m`, run 2026-10-15 18:53. Test: 1000 W/m², 1 L/min, 30 min, room 20 °C.
 
 ## Key numbers
 
