@@ -80,14 +80,18 @@ D.loss_route_j.cover_radiation = J(H.top_radiation_w);
 D.loss_route_j.vessel_and_hoses = J(H.loop_loss_w);
 D.loss_route_j.edges = J(H.edge_loss_w);
 D.loss_route_j.underside = J(H.back_loss_w);
-D.col.water = [0.29 0.22 0.64];
-D.col.kept = [0.91 0.49 0.64];
-D.col.cond = [0.16 0.47 0.84];
-D.col.conv = [0.11 0.69 0.47];
-D.col.rad = [0.89 0.29 0.29];
-D.col.light = [0.93 0.62 0.06];
+% Colour-blind-safe Okabe-Ito palette. Okabe-Ito yellow is left out: too faint as a line on white.
+D.col.water = [0 114 178]/255;          % blue
+D.col.kept = [204 121 167]/255;         % reddish purple
+D.col.cond = [86 180 233]/255;          % sky blue
+D.col.conv = [0 158 115]/255;           % bluish green
+D.col.rad = [213 94 0]/255;             % vermillion
+D.col.light = [230 159 0]/255;          % orange
 D.col.ink2 = [0.32 0.32 0.31];
-D.col.series = [0.16 0.47 0.84; 0.91 0.40 0.21; 0.11 0.69 0.47; 0.93 0.62 0.06; 0.91 0.49 0.64; 0.0 0.5 0.0; 0.89 0.29 0.29];
+% Line series: the Okabe-Ito colours other than the water blue, then black and grey; each line
+% also gets its own line style so the series stay apart without colour.
+D.col.series = [213 94 0; 230 159 0; 0 158 115; 86 180 233; 204 121 167; 0 0 0; 140 140 140]/255;
+D.col.styles = {'-', '--', '-.', ':', '-', '--', '-.'};
 end
 
 
@@ -114,7 +118,7 @@ labels = cell(size(ends));  % Cell column of the printed end labels.
 colors = zeros(numel(ends), 3);  % Double RGB matrix, one colour per end label.
 for k = 1:size(series, 1)
     y = H.(series{k, 1});
-    plot(ax, D.tm, y, 'Color', col.series(k, :), 'LineWidth', 1.6, 'DisplayName', series{k, 2});
+    plot(ax, D.tm, y, col.styles{k}, 'Color', col.series(k, :), 'LineWidth', 1.6, 'DisplayName', series{k, 2});
     ends(k) = y(end);
     labels{k} = sprintf('%.1f °C', y(end));
     colors(k, :) = col.series(k, :);
@@ -231,8 +235,8 @@ collector_efficiency = 100*H.plate_to_water_w/lamp_w;  % Percent, instantaneous 
 net = 100*D.bands.water/lamp_w;  % Percent, rate of energy gained by all water / lamp power on the footprint.
 running = 100*cumsum(D.bands.water.*diff(D.t))./(lamp_w*D.t(2:end));  % Percent, accumulated water-energy gain / accumulated incident energy.
 plot(ax, D.tm, collector_efficiency, 'Color', col.series(1, :), 'LineWidth', 1.8, 'DisplayName', 'Collector: heat into the pipe water');
-plot(ax, D.t_mid/60, net, 'Color', col.series(2, :), 'LineWidth', 1.8, 'DisplayName', 'Water gain (after vessel loss)');
-plot(ax, D.t(2:end)/60, running, 'Color', col.series(3, :), 'LineWidth', 1.8, 'DisplayName', 'Running average of water gain');
+plot(ax, D.t_mid/60, net, col.styles{2}, 'Color', col.series(2, :), 'LineWidth', 1.8, 'DisplayName', 'Water gain (after vessel loss)');
+plot(ax, D.t(2:end)/60, running, col.styles{3}, 'Color', col.series(3, :), 'LineWidth', 1.8, 'DisplayName', 'Running average of water gain');
 text(ax, D.tm(end), running(end), sprintf('%.1f %% at %g min', running(end), D.tm(end)), 'HorizontalAlignment', 'right', 'VerticalAlignment', 'bottom', 'FontSize', 8.5, 'Color', col.series(3, :));
 xlim(ax, [0 D.tm(end)]);
 ylim(ax, [0 max([collector_efficiency; net])*1.15]);
@@ -269,7 +273,7 @@ hold(ax, 'on');
 last = Y(end, :);  % Double row [degC], all temperatures at the end of the run.
 x = 1000*(cumsum(g.cells.length_m) - g.cells.length_m/2);  % Double column [mm], cell centres along one water path.
 plot(ax, x, last(i.water), 'Color', col.water, 'LineWidth', 1.8, 'DisplayName', 'water');
-plot(ax, x, last(i.wall), 'Color', col.series(2, :), 'LineWidth', 1.8, 'DisplayName', 'pipe wall');
+plot(ax, x, last(i.wall), col.styles{2}, 'Color', col.series(2, :), 'LineWidth', 1.8, 'DisplayName', 'pipe wall');
 yline(ax, last(i.absorber), 'Color', col.series(1, :), 'LineWidth', 1.8, 'DisplayName', 'plate (one temperature)');
 yline(ax, last(i.external), ':', 'Color', col.ink2, 'DisplayName', 'vessel (feeds the trunk)');
 lab = g.cells.label;  % Cell column of tier names, following the water path.
@@ -385,7 +389,7 @@ hold(ax, 'on');
 patch(ax, [flows(1) flows(end) flows(end) flows(1)], [2300 2300 3000 3000], [0.94 0.94 0.93], 'EdgeColor', 'none', 'HandleVisibility', 'off');
 text(ax, flows(end) - 0.05, 2650, 'transition 2300-3000', 'FontSize', 8, 'Color', col.ink2, 'HorizontalAlignment', 'right');
 for j = 1:size(re, 2)
-    plot(ax, flows, re(:, j), 'Color', col.series(j, :), 'LineWidth', 1.8, 'DisplayName', c.design.stages(j).name);
+    plot(ax, flows, re(:, j), col.styles{j}, 'Color', col.series(j, :), 'LineWidth', 1.8, 'DisplayName', c.design.stages(j).name);
 end
 xline(ax, c.test.flow_lpm, ':', 'Color', col.ink2, 'HandleVisibility', 'off');
 xlim(ax, L.pump_flow_range_lpm);

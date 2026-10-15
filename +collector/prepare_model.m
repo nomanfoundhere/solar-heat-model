@@ -20,11 +20,11 @@ function g = prepare_model(c)
 %                          pipe_dp_path_pa, minor_dp_path_pa (Pa)
 %       .C                 1x4 double, J/K: absorber, WHOLE water, inner cover, outer cover
 %       .C_external        double, J/K: vessel + hoses water (+ unlocated fitting water)
-%       .absorber_items    1x1 struct of double J/K: plate, tape_foil, tape_adhesive, paint, fittings
+%       .absorber_items    1x1 struct of double J/K: plate, paint, fittings
 %       .cells             1x1 struct, per tube-water cell in flow order (m x 1 double each):
 %                          C_water, C_wall (J/K), ga, gf (W/K), footprint_share (-, sums to 1),
 %                          length_m (m, cell length along ONE path), bond_share (-, share of the
-%                          absorber-to-wall resistance that is the tape bond: the pipe's outer surface
+%                          absorber-to-wall resistance that is the plate contact: the pipe's outer surface
 %                          sits at Ta - bond_share*(Ta - Tw)); label (m x 1 cell of char, tier name)
 %       .backing           1x1 struct: C (nb x 1, J/K per layer), G ((nb+1) x 1, W/K:
 %                          plate->layer 1, layer k->k+1, last layer->air), material (nb x 1
@@ -74,7 +74,19 @@ for i = 1:number_tiers
     count = s.parallel*s.serial;  % Total pipes in this tier, including its return section.
     pipe_flow = q/s.parallel;  % m^3/s through one pipe; equal flow division is assumed.
     [water_h, reynolds, nusselt] = collector.water_heat_transfer(di, L, pipe_flow, c);  % Water film coefficient [W/(m^2 K)], Reynolds number and Nusselt number.
-    w = collector.tube_wall_heat_transfer(od, di, L, d.tube_k, water_h, d.tube_density, d.tube_cp, h.bond_per_length, h.contact_fraction, h.circumference_fraction);
+    if isempty(h.bond_per_length)
+        % Bare tube on the plate: the bond follows from the line contact of this tier.
+        % Plate and black tube exchange radiation at the gap-air film temperature (both emissivity h.emissivity).
+        h_rad = 4*p.sigma*p.air_film_temperature_k^3/(2/h.emissivity - 1);  % W/(m^2 K)
+        contact = collector.line_contact_conductance(od, di, d.tube_k, water_h, p.air_k, h.contact_gap_mm/1000, h_rad);
+        bond = contact.bond;  % W/(m K) per metre of tube.
+        r.contact_air_w_mk = contact.air;
+        r.contact_total_w_mk = contact.total;
+    else
+        bond = h.bond_per_length;
+        [r.contact_air_w_mk, r.contact_total_w_mk] = deal(NaN);
+    end
+    w = collector.tube_wall_heat_transfer(od, di, L, d.tube_k, water_h, d.tube_density, d.tube_cp, bond, h.contact_fraction, h.circumference_fraction);
     % The heat path includes the bond, tube wall and water film. Pressure loss
     % uses the same bore and flow but follows one route, not all parallel pipes.
     bore_area = pi*di^2/4;  % m^2, cross-section of one water passage.
@@ -131,13 +143,10 @@ g.aperture_m2 = d.aperture_length_mm*d.aperture_width_mm/1e6;
 g.gross_m2 = d.plate_length_mm*d.plate_width_mm/1e6;
 g.cover_m2 = d.cover_length_mm*d.cover_width_mm/1e6;
 g.total_length_m = sum([tier_results.count].*[tier_results.length_mm])/1000;
-tape_area = g.total_length_m*d.tape_width_mm/1000;  % m^2, one full-width strip per tube length; overlaps are counted.
 g.junctions = 2*(stages(end).parallel - 1);  % One binary branching tree on each side of the tips.
 % Each solid stores mass*specific_heat [J/K], or volume*volumetric_heat_capacity.
-% The plate, tape, equivalent finish and fittings share the absorber temperature.
+% The plate, its paint and the fittings share the absorber temperature.
 g.absorber_items.plate = g.gross_m2*d.plate_thickness_mm/1000*p.aluminium_density*p.aluminium_cp;
-g.absorber_items.tape_foil = tape_area*d.tape_foil_mm/1000*p.aluminium_density*p.aluminium_cp;
-g.absorber_items.tape_adhesive = tape_area*d.tape_adhesive_mm/1000*d.adhesive_heat_capacity;
 g.absorber_items.paint = g.gross_m2*d.paint_dry_film_mm/1000*d.paint_heat_capacity;
 g.absorber_items.fittings = g.junctions*d.fitting_mass_g/1000*d.fitting_cp;
 % Heat capacities [J/K]: absorber solids, all loop water, then the two cover faces.
@@ -339,15 +348,10 @@ end
 nonneg = {d.vessel_l;
        d.fitting_water_ml;
        d.support_mm;
-       d.tape_width_mm;
-       d.tape_foil_mm;
-       d.tape_adhesive_mm;
-       d.adhesive_heat_capacity;
        d.paint_dry_film_mm;
        d.paint_heat_capacity;
        d.fitting_mass_g;
        d.fitting_cp;
-       h.bond_per_length;
        h.external_h;
        h.edge_ua;
        t.flow_lpm;
@@ -355,6 +359,13 @@ nonneg = {d.vessel_l;
        t.irradiance};
 if any(cellfun(@(v) ~(isfinite(v) && v >= 0), nonneg))
     error('leaf:inputs', 'A quantity that cannot be negative is negative');
+end
+if isempty(h.bond_per_length)
+    if ~isfinite(h.contact_gap_mm) || h.contact_gap_mm <= 0
+        error('leaf:inputs', 'contact_gap_mm must be positive when the bond is derived');
+    end
+elseif ~isscalar(h.bond_per_length) || ~isfinite(h.bond_per_length) || h.bond_per_length < 0
+    error('leaf:inputs', 'bond_per_length must be empty or a finite nonnegative W/(m K)');
 end
 if isempty(h.loop_ua)
     % These dimensions are needed only for the cylindrical course-loop model.

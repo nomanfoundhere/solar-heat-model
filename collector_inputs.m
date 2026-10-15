@@ -40,15 +40,19 @@ function c = collector_inputs()
 %% Design: geometry and materials
 % One row per tier of the leaf tree (symmetric, mirrored return):
 %   name, outside diameter mm, wall mm, length of ONE pipe mm, parallel pipes, serial traversals, local loss K
-% USER 27 Sep: uniform 13 mm OUTSIDE diameter (Gardena Micro-Drip 13 mm; the 23 Sep 10 mm tube is
-% unavailable locally), 1 mm wall ASSUMED; lengths and counts from the leaf design.
-names = {'Trunk', 'First branches', 'Second branches', 'Tips'}; % Cell row of tier names.
+% USER 27 Sep: Gardena Micro-Drip 13 mm tube (the 23 Sep 10 mm tube is unavailable locally).
+% USER 11 Oct: 13 mm is the BORE, so outside diameter = 13 + 2 x 1 = 15 mm. Wall 1 mm ASSUMED, checked
+% 14 Oct against the product weight: 2200 g / 50 m = 44 g/m at 920 kg/m3 gives 47.8 mm2 of wall,
+% so OD = sqrt(13^2 + 4*47.8/pi) = 15.2 mm and wall = 1.1 mm (less if the weight includes packaging).
+% Lengths and counts from the leaf design.
+% USER 15 Oct (build photos 10 Oct): no 60 mm trunk pieces were fitted; the hoses go straight onto
+% the two root tees, so the leaf starts at the first branches.
+names = {'First branches', 'Second branches', 'Tips'}; % Cell row of tier names.
 % Each row contains [outside diameter mm, wall mm, pipe length mm,
 % parallel pipes, supply/return traversals, local loss coefficient].
-tiers = [13 1 60 1 2 0;
-         13 1 140 2 2 0;
-         13 1 90 4 2 0;
-         13 1 220 8 1 0];
+tiers = [15 1 140 2 2 0;
+         15 1 90 4 2 0;
+         15 1 220 8 1 0];
 for k = 1:numel(names)
     d.stages(k).name = names{k};
     d.stages(k).outside_mm = tiers(k, 1);
@@ -63,14 +67,9 @@ d.tube_k = 0.33;                 % W/(m K), LEGACY estimate; replace with select
 d.tube_density = 920;            % kg/m3, Goodfellow LDPE; proxy, tube product not certified
 d.tube_cp = 2090;                % J/(kg K), measured LDPE at 25 C (PMC9269369 Table 2)
 % Itemised absorber-node solids (see Model explanations/Pipe wall thermal storage.md)
-d.tape_width_mm = 50;            % one strip along every tube; Hornbach Maclean 50 mm roll
-d.tape_foil_mm = 0.07;           % aluminium backing, 3M 425 datasheet as proxy
-d.tape_adhesive_mm = 0.05;       % 3M 425 total 0.12 mm minus backing
-d.adhesive_heat_capacity = 1.5e6;% J/(m3 K), ESTIMATE for acrylic adhesive
-% The selected finish is black film. Its heat capacity still uses the earlier
-% coating estimate below; these are not properties of the selected product.
-d.paint_dry_film_mm = 0.04;      % mm, LEGACY equivalent coating thickness over the plate
-d.paint_heat_capacity = 2.1e6;   % J/(m3 K), LEGACY equivalent coating heat capacity
+% Finish: the course plate's own black paint; the tubes lie bare on it.
+d.paint_dry_film_mm = 0.04;      % mm, ESTIMATE paint layer over the plate (not measured)
+d.paint_heat_capacity = 2.1e6;   % J/(m3 K), ESTIMATE polymer paint
 d.fitting_mass_g = 4;            % g per tee, ASSUMED
 d.fitting_cp = 1900;             % J/(kg K), LEGACY polyolefin proxy; printed tees use PLA
 % Aperture means the clear opening inside the rim, entered separately from
@@ -106,7 +105,7 @@ p.vessel_insulation_k = 0.038;   % W/(m K), ESTIMATE PE foam around the vessel
 p.aluminium_density = 2700;      % kg/m3, LEGACY
 p.aluminium_cp = 900;            % J/(kg K), LEGACY
 p.insulation_k = 0.038;          % W/(m K); GAMMA B269729 Rd 0.53 m2K/W at 20 mm; rated +70 C
-p.insulation_density = 20;       % kg/m3, typical EPS 100
+p.insulation_density = 15;       % kg/m3, GAMMA B269729: 1.8 kg per 12 sheets of 1 x 0.5 x 0.02 m
 p.insulation_cp = 1450;          % J/(kg K), EN ISO 10456
 p.support_k = 0.3;               % W/(m K), Trespa HPL datasheet
 p.support_density = 1350;        % kg/m3, Trespa datasheet minimum
@@ -120,21 +119,27 @@ p.sigma = 5.670374419e-8;        % W/(m2 K4)
 c.properties = p;
 
 %% Heat transfer: tube contact, absorbed light and losses
-h.bond_per_length = 30;          % W/(m K), foil/tube contact, LEGACY estimate
+h.bond_per_length = [];          % W/(m K); [] derives it from the line contact of the bare tube on
+                                 % the plate; a number overrides it (Intex: welded channels)
+h.contact_gap_mm = 0.05;         % mm, ESTIMATE smallest air gap between the round tube and the flat
+                                 % plate (surface waviness); used when bond_per_length is []
 h.contact_fraction = 1;          % fraction of each tube length coupled to the absorber
-h.circumference_fraction = 1;    % full foil wrap assumed
-h.internal_model = 'fully_developed';  % or 'developing'
-h.laminar_nusselt = 4.36;        % constant heat-flux limit
-h.absorptance = 0.94;            % -, LEGACY black-coating assumption (USER 24 Sep: keep)
-h.emissivity = 0.90;             % LEGACY estimate
-% Gutta 4.5 mm clear twinwall: 83 % transmission (solar proxy); US6635342B1 Table 1: 4 % absorption.
-h.cover_transmittance = 0.83;
+h.circumference_fraction = 1;    % radial wall path; spreading around the wall is in the derived bond
+h.internal_model = 'developing';  % Hausen mean Nu: every pipe (0.06-0.22 m) is far shorter than its
+                                 % thermal entry length (0.9-7.2 m); each tee restarts the profile
+h.laminar_nusselt = 4.36;        % constant heat-flux limit, used only with 'fully_developed'
+h.absorptance = 0.94;            % -, LEGACY estimate for the plate's black paint (USER 24 Sep: keep)
+h.emissivity = 0.90;             % LEGACY estimate, black paint
+% Gutta 4.5 mm clear twinwall: 82 % light transmission (Hornbach product data, solar proxy);
+% US6635342B1 Table 1: 4 % absorption.
+h.cover_transmittance = 0.82;
 h.cover_absorptance = 0.04;      % split equally between the two cover nodes
 h.cover_emissivity = 0.90;
 h.cover_resistance = 0.08;       % m2 K/W, twinwall core (air channel conduction + radiation)
 h.cover_capacity_area = 1200;    % J/(m2 K), whole two-node cover
 h.capture_recovery = 1;          % fraction of tube-footprint light absorbed
-h.footprint_to_wall = 0.2;       % share of footprint light deposited straight into the tube walls (range 0.13-0.31)
+h.footprint_to_wall = 1;         % the bare black tube shades its footprint, so all of that light lands
+                                 % on the tube wall (absorptance taken equal to the black paint)
 h.rim_shading = true;            % aperture view factor applied to diffuse light only
 h.cover = true;                  % false: no cover, absorber loses to the room directly (uncovered Intex)
 h.external_h = 8;                % W/(m2 K), convection over the outer lid, LEGACY

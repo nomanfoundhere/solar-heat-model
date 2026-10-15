@@ -56,8 +56,8 @@ wmax = max(water(:));
 rule(wmin > 0 && wmax < 100, 'FAIL', 'Water stays liquid', sprintf('%.1f to %.1f C', wmin, wmax), '0 to 100 C', 'the model has no ice or steam');
 rule(wmin >= L.water_property_range_c(1) && wmax <= L.water_property_range_c(2), 'WARN', 'Water properties fixed at 30 C', sprintf('%.1f to %.1f C', wmin, wmax), sprintf('%g to %g C', L.water_property_range_c), 'outside this range the fixed viscosity and conductivity drift');
 rule(max(H.plate_c) <= L.eps_max_c, 'WARN', 'EPS below its service limit', sprintf('%.1f C', max(H.plate_c)), sprintf('< %g C', L.eps_max_c), 'the EPS touches the plate; above its limit it softens and shrinks');
-surface = Y(:, i.absorber) - (Y(:, i.absorber) - Y(:, i.wall)).*g.cells.bond_share';   % pipe outer surface under the tape
-rule(max(surface(:)) <= L.pipe_max_c, 'WARN', 'Pipe below its service limit', sprintf('%.1f C', max(surface(:))), sprintf('< %g C', L.pipe_max_c), 'hottest pipe outer surface under the tape; check the tube datasheet');
+surface = Y(:, i.absorber) - (Y(:, i.absorber) - Y(:, i.wall)).*g.cells.bond_share';   % pipe outer surface at the plate contact
+rule(max(surface(:)) <= L.pipe_max_c, 'WARN', 'Pipe below its service limit', sprintf('%.1f C', max(surface(:))), sprintf('< %g C', L.pipe_max_c), 'hottest pipe outer surface; check the tube datasheet');
 q = c.test.flow_lpm;
 rule(q >= L.pump_flow_range_lpm(1) && q <= L.pump_flow_range_lpm(2), 'WARN', 'Flow inside the pump range', sprintf('%g L/min', q), sprintf('%g to %g L/min', L.pump_flow_range_lpm), 'the course pump cannot run outside this range');
 rule(s.pipe_dp_pa <= L.pipe_drop_share_max*L.pump_max_pa, 'WARN', 'Pressure drop small for the pump', sprintf('%.1f Pa', s.pipe_dp_pa), sprintf('< %.0f Pa', L.pipe_drop_share_max*L.pump_max_pa), 'straight pipes only; tees and bends add more');
@@ -68,9 +68,12 @@ for k = 1:numel(g.stages)
     st = g.stages(k);
     re = st.reynolds;
     rule(~(re > 2300 && re < 3000), 'WARN', sprintf('%s: clear flow regime', st.name), sprintf('Re %.0f', re), 'not 2300-3000', 'between laminar and turbulent the film coefficient is a straight-line guess');
-    if re <= 2300
+    if re <= 2300 && strcmp(c.heat.internal_model, 'fully_developed')
         entrance = 0.05*re*pr*st.bore_mm;                       % mm, laminar thermal entrance length
         rule(entrance <= st.length_mm, 'NOTE', sprintf('%s: fully developed laminar flow', st.name), sprintf('entrance %.0f mm', entrance), sprintf('< pipe %.0f mm', st.length_mm), 'a longer entrance means a thinner film than Nu 4.36 assumes: more heat reaches the water');
+    elseif re <= 2300
+        entrance = 0.05*re*st.bore_mm;                          % mm, laminar velocity entrance length
+        rule(entrance <= st.length_mm, 'NOTE', sprintf('%s: developed velocity profile (Hausen)', st.name), sprintf('entrance %.0f mm', entrance), sprintf('< pipe %.0f mm', st.length_mm), 'Hausen assumes a developed velocity profile; a developing one gives a thinner film: more heat reaches the water');
     end
 end
 ra = zeros(size(Y, 1), 1);  % Double column of gap Rayleigh numbers, one per output time.

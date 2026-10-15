@@ -35,7 +35,8 @@ run_collector(PDF=true)
 | [simulink/solar_collector.slx](simulink/solar_collector.slx) | Block diagram with a temperature state for each heat store. |
 | [simulink/simulate_collector.m](simulink/simulate_collector.m) | Pass the inputs into Simulink and read its outputs. |
 | [+collector/prepare_model.m](+collector/prepare_model.m) | Calculate water volumes, heat capacities and heat-transfer conductances. |
-| [+collector/tube_wall_heat_transfer.m](+collector/tube_wall_heat_transfer.m) | Heat path from the plate, through the bond and pipe wall, into the water. |
+| [+collector/tube_wall_heat_transfer.m](+collector/tube_wall_heat_transfer.m) | Heat path from the plate, through the contact and pipe wall, into the water. |
+| [+collector/line_contact_conductance.m](+collector/line_contact_conductance.m) | Contact of a bare round tube on the flat plate: air and radiation from the plate, conduction around the wall to the water. |
 | [+collector/water_heat_transfer.m](+collector/water_heat_transfer.m) | Water-side heat-transfer coefficient in each pipe. |
 | [+collector/surface_heat_flows.m](+collector/surface_heat_flows.m) | Convection and radiation across the air gap and to the room. |
 | [+collector/cover_view_factor.m](+collector/cover_view_factor.m) | Fraction of diffuse light that crosses the finite opening. |
@@ -46,7 +47,7 @@ run_collector(PDF=true)
 
 MATLAB uses the `+collector` folder as a package: for example, `collector.prepare_model(c)` calls the function in `+collector/prepare_model.m`, using the input struct `c`.
 
-The absorber state includes the plate, tape, finish and tee fittings. Each pipe-water cell has a matching pipe-wall state, so the wall stores heat as well as resisting heat transfer. The vessel and hoses share one mixed-water temperature. Separate layers represent heat storage and conduction through the EPS insulation and supporting plate.
+The absorber state includes the plate, its paint and the tee fittings. Each pipe-water cell has a matching pipe-wall state, so the wall stores heat as well as resisting heat transfer. The vessel and hoses share one mixed-water temperature. Separate layers represent heat storage and conduction through the EPS insulation and supporting plate.
 
 ## Geometry and assumptions
 
@@ -58,23 +59,37 @@ The diffuse view factor is the fraction of uniformly diffuse light that reaches 
 
 The vessel and hose dimensions set both water inventory and external heat loss. The default `heat.loop_ua = []` calculates their combined conductance in W/K each run. An explicit number overrides that calculation, including zero to switch this heat-loss route off. The vessel side is insulated, its end caps are bare, and all hoses use the entered common wall thickness. Vessel and hose solids have no separate heat-storage states.
 
-Contact conductance, optical properties and the share of pipe-footprint light entering the wall remain assumptions. Geometry determines pipe area; it does not determine how well the tape contacts the tube or where absorbed light deposits its heat.
+The bare black tubes lie on the plate. With `heat.bond_per_length = []` the contact is derived each run from the smallest air gap (`heat.contact_gap_mm`, an estimate): air conduction below the tube and radiation from the plate feed the tube wall, and conduction around the wall to the water is solved numerically. The gap and the optical properties remain assumptions. The light over each tube footprint lands on the black tube itself, so all of it enters the tube wall.
 
 ## Saved design and results
 
-The supplied inputs describe the 28 September 2026 geometry: 13 mm outside-diameter tubes, an assumed 1 mm wall, and a 28 mm plate-to-cover gap. The test uses 1000 W/m² irradiance and 1 L/min total flow for 30 minutes, starting at 20 °C.
+The supplied inputs describe the built geometry: tubes with a 13 mm bore and an assumed 1 mm wall (15 mm outside diameter; the product weight, 2200 g per 50 m, gives about 1.1 mm), and a 28 mm plate-to-cover gap. The test uses 1000 W/m² irradiance and 1 L/min total flow for 30 minutes, starting at 20 °C.
 
-The saved primary-model run gives an energy-weighted mean water temperature of **45.50 °C** after 30 minutes. The vessel reaches 40 °C after about **23.0 minutes**. The mean includes water in the collector, hoses and vessel; the target time follows the vessel temperature.
+The leaf starts at the first branches: the hoses go straight onto the two root tees, so no 60 mm trunk pieces were fitted (build photos, 10 Oct). The saved primary-model run gives an energy-weighted mean water temperature of **36.05 °C** after 30 minutes, so the vessel does not reach 40 °C. The plate reaches 74.3 °C: the bare-tube contact (0.84 to 0.96 W/(m·K), 2.70 W/K for all 3.04 m of tube) cannot carry its heat to the water. The mean includes water in the collector, hoses and vessel.
 
-The trunk Reynolds number is about 2417, within the model's 2300–3000 transition band. In that band, the water-side heat-transfer coefficient is a linear blend of the laminar and turbulent correlations. This produces a warning in the results.
+The first-branch Reynolds number is about 1023, so every tier is laminar. Every pipe is much shorter than its thermal entry length, and each tee mixes the water, so the film uses the Hausen developing-flow correlation (Nu 6.8 to 13.3).
 
-The finish is represented by the retained coating heat capacity and optical assumptions in `collector_inputs.m`. Those values remain modelling inputs rather than product-specific properties of the selected black film. Tee fittings retain a 4 g mass estimate and a polyolefin heat-capacity proxy, although the current fittings are printed PLA.
+The finish is the course plate's own black paint; its heat capacity and optical values in `collector_inputs.m` are estimates. Tee fittings retain a 4 g mass estimate and a polyolefin heat-capacity proxy, although the current fittings are printed PLA.
 
 ## Reference measurements
 
 The [Intex temperature measurements](validation/data/intex_2024-07-03_temperatures.csv) contain elapsed time in seconds and inlet/outlet temperatures in °C. The [flow measurements](validation/data/intex_2024-07-03_flow_60s.csv) contain 60-second bin centres, mean flow in L/min and sample counts. Both files retain their source and extraction notes in their headers.
 
 These measurements describe the Intex reference system on 3 July 2024. The files in `results/` are simulated results for the branching collector.
+
+## Final test replay (13 October 2026)
+
+[`validation/data/final_test_2026-10-13.txt`](validation/data/final_test_2026-10-13.txt) is the course recording of the built collector: inlet, outlet and vessel temperature (°C) and flow (L/min) at 1 Hz for 43.6 minutes, read at the cart sensors. The lamp was on from the first sample. All 2 L of water started in the vessel, with the collector and hoses empty. The joints at the printed tees leaked heavily, the first refill was pumped until the vessel ran dry, and later refills were topped up during the run. Steam from the leaked water fogged the covers.
+
+The design model predicts a dry, sealed collector at a steady 1 L/min, which the test was not. The replay runs the same equations with the conditions of the test instead. The measured inlet temperature and flow drive the collector, through the hose between each sensor and the collector (about 118 mL and 0.68 W/K per side). The modelled outlet is compared with the outlet sensor. The vessel is not modelled, because the loop leaked. Three test conditions are added, and none is fitted:
+
+- **Leak flow.** The first refill pumped 4.52 L until the vessel ran dry. The loop was empty at the start, and the air drawn in by the starving pump emptied it again at the end, so all 2 L was lost at the joints. That leaves 1 − 2.00/4.52 = 0.56 of the metered flow crossing the plate. The same share is assumed for the whole test.
+- **Cart glass.** The test cart's glass cover above the lid has an energy transmittance of 0.87, the AGC datasheet value for 4 mm reduced-iron float glass (Planibel Clearlite). The thickness is unknown; ordinary to low-iron float spans 0.83–0.90.
+- **Fogged covers.** Three surfaces in the light path carried condensed droplets: the underside and top of the polycarbonate lid, and the underside of the cart glass. The room side of the glass stayed dry. Zhu et al. (2017) give the transmittance of a window with droplets on its back as a function of the droplet contact angle and coverage (their Fig. 7a). Uncoated polycarbonate has a contact angle of about 74° (Karabulut et al. 2025), which gives 0.77 of the dry value at 60 % droplet coverage. Unclean glass, at about 51° (Briscoe and Galvin, reviewed by Zhu et al.), gives 0.92 at the same coverage. Clean glass, on which water spreads flat, loses only 1–9 % (Pollet et al. 1999). The beaded droplets seen on the cart glass after the test point to the unclean case.
+
+The light reaching the plate is then 0.87 × 0.77² × 0.92 = 0.48 of the design value. With these conditions, the model reproduces the measured outlet within 2.3 K RMS and ends 0.8 K above it. At 90 % droplet coverage (polycarbonate 0.66, glass 0.88), it ends about 5 K below it. From minute 19 onwards, the measured outlet lies between the two. With the design inputs, the model misses by 13.9 K. Leakage at the printed tees and the fogging it caused explain the test result. The design prediction for a dry, sealed collector was not tested.
+
+The replay script is kept with the local verification work, like the Intex fit.
 
 ## Change the block diagram
 

@@ -16,7 +16,7 @@ function w = tube_wall_heat_transfer(od, di, len, k, film, rho, cp, bond, contac
 %     film           double scalar, W/(m^2 K), > 0. Water-side film coefficient.
 %     rho            double scalar, kg/m^3, > 0. Wall density.
 %     cp             double scalar, J/(kg K), > 0. Wall specific heat.
-%     bond           double scalar, W/(m K) per metre of tube, >= 0. Tape/contact
+%     bond           double scalar, W/(m K) per metre of tube, >= 0. Plate-to-tube contact
 %                    conductance; 0 disconnects the tube from the absorber.
 %     contact        double scalar in [0, 1]. Fraction of the length touching the absorber.
 %     circumference  double scalar in [0, 1]. Fraction of the circumference conducting.

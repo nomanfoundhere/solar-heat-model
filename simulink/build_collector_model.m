@@ -301,7 +301,7 @@ end
 
 function store_absorber(m, pos)
 % store_absorber(m, pos): builds the absorber-plate store (light, gap, top, walls, backing, edge loss).
-s = subsys(m, 'Absorber plate', pos, ['Aluminium plate + tape + paint + tee fittings, one temperature. ' 'C dT/dt = (q_solar - q_tube) - q_gap - q_top(no cover) - sum q_plate->walls - q_plate->backing - edge loss'], 'C dT/dt = light - gap - top\n- walls - backing - edge');
+s = subsys(m, 'Absorber plate', pos, ['Aluminium plate + paint + tee fittings, one temperature. ' 'C dT/dt = (q_solar - q_tube) - q_gap - q_top(no cover) - sum q_plate->walls - q_plate->backing - edge loss'], 'C dT/dt = light - gap - top\n- walls - backing - edge');
 source(s, 'Light on the plate', 'P.q_solar - P.q_tube', row(1));
 names = {'q gap', 'q top (no cover)', 'q plate to walls', 'q plate to backing'};
 for k = 1:4
