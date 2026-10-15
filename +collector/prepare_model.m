@@ -137,6 +137,18 @@ hose_bores = d.external_hoses(:, 2)/1000;  % Double column [m], corresponding in
 hose_volumes = hose_lengths.*pi.*hose_bores.^2/4*1000;  % Double column [L], cylindrical water volumes.
 hose_water_l = sum(hose_volumes);  % L, water in all external hoses.
 g.tube_water_l = tube_water_l;
+% The loop holds loop_water_l in total: the collector tubes and hoses fill from the vessel,
+% so the vessel keeps what is left. loop_heat_loss reads the vessel fill from c.design.
+if isfield(d, 'vessel_l') && ~isempty(d.vessel_l)
+    % An explicit vessel volume (the Intex reference set-up) is kept as given.
+else
+    d.vessel_l = d.loop_water_l - hose_water_l - tube_water_l - d.fitting_water_ml/1000;  % L
+end
+if d.vessel_l <= 0
+    error('leaf:inputs', 'The vessel keeps no water: loop_water_l is not more than the water in the tubes and hoses');
+end
+c.design.vessel_l = d.vessel_l;
+g.vessel_l = d.vessel_l;
 g.external_water_l = d.vessel_l + hose_water_l;
 g.whole_water_l = d.vessel_l + hose_water_l + tube_water_l + d.fitting_water_ml/1000;
 g.aperture_m2 = d.aperture_length_mm*d.aperture_width_mm/1e6;
@@ -345,7 +357,7 @@ end
 if any(structfun(@(v) ~(isfinite(v) && v > 0), p))
     error('leaf:inputs', 'Every material property must be positive');
 end
-nonneg = {d.vessel_l;
+nonneg = {d.loop_water_l;
        d.fitting_water_ml;
        d.support_mm;
        d.paint_dry_film_mm;

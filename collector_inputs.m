@@ -84,7 +84,7 @@ d.cover_width_mm = 664;
 d.gap_mm = 28;                   % DECIDED 27 Sep (SSA 6): 2 seal + 18 wall + 2 seal + 4 rim + 2 seal; horizontal hot lower surface assumed
 d.insulation_mm = 20;            % LEGACY EPS thickness; one GAMMA 20 mm sheet
 d.support_mm = 6;                % COURSE: 6 mm Trespa cart plate, open air below (0 = none)
-d.vessel_l = 2;                  % COURSE vessel water
+d.loop_water_l = 2;              % COURSE: 2 L fill the whole loop (vessel, hoses, collector tubes); the vessel keeps the rest
 d.external_hoses = [2.0 8.5; 1.0 12.5];  % [length m, BORE mm]; COURSE lengths, second bore assumed
 d.external_hose_wall_mm = 1.75;  % mm, COURSE 12/8.5 mm hose; same wall assumed for the wider hose
 d.vessel_outside_mm = 110;       % mm, COURSE PVC vessel tube
